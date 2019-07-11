@@ -1,0 +1,75 @@
+C51 COMPILER V9.54   ALLTASK                                                               07/07/2019 10:41:22 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE ALLTASK
+OBJECT MODULE PLACED IN .\OutPut\allTask.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE Source\allTask.c LARGE OPTIMIZE(8,SIZE) BROWSE DEBUG OBJECTEXTEND PRINT(
+                    -.\OutPut\allTask.lst) OBJECT(.\OutPut\allTask.obj)
+
+line level    source
+
+   1          #include "includes.h"
+   2          
+   3          //运行灯
+   4          sbit LED = P5^5;
+   5          
+   6          //定义任务堆栈
+   7          OS_STK Task1Stk[MaxStkSize+1];            //注意：在ASM文件中设置?STACK空间为40H即64
+   8          OS_STK Task2Stk[MaxStkSize+1];
+   9          OS_STK Task3Stk[MaxStkSize+1];
+  10          
+  11          void Task1(void *ppdata) reentrant
+  12          {
+  13   1              ppdata = ppdata;
+  14   1              ET0 = 1;       //根任务开时钟节拍中断 重要！！！！！！！！！！！！！！！！！！！！！！！！
+  15   1              for(;;)
+  16   1          {
+  17   2                      LED = ~LED;
+  18   2              OSTimeDly(OS_TICKS_PER_SEC*2);  //延时2s
+  19   2                      //OSSemPost(FirstSem);  
+  20   2          }    
+  21   1      }
+  22          
+  23          void Task2(void *ppdata) reentrant
+  24          {
+  25   1              ppdata=ppdata;
+  26   1              while(1)
+  27   1          {
+  28   2                      Process_Uart();
+  29   2                      
+  30   2      
+  31   2                      OSTimeDly(OS_TICKS_PER_SEC);
+  32   2                      Feed_WDT();
+  33   2          }    
+  34   1      }
+  35          
+  36          void Task3(void *ppdata) reentrant
+  37          {
+  38   1              ppdata=ppdata;
+  39   1              
+  40   1                      
+  41   1              for(;;)                                                         
+  42   1          {
+  43   2      //              OSTimeDlyHMSM(0,0,10,0);
+  44   2                      OSTimeDly(OS_TICKS_PER_SEC);
+  45   2          }    
+  46   1      }
+*** WARNING C294 IN LINE 21 OF Source\allTask.c: unreachable code
+*** WARNING C294 IN LINE 34 OF Source\allTask.c: unreachable code
+*** WARNING C294 IN LINE 46 OF Source\allTask.c: unreachable code
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    118    ----
+   CONSTANT SIZE    =   ----    ----
+C51 COMPILER V9.54   ALLTASK                                                               07/07/2019 10:41:22 PAGE 2   
+
+   XDATA SIZE       =    195    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  3 WARNING(S),  0 ERROR(S)

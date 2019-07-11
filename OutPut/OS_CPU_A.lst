@@ -1,0 +1,397 @@
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.02c
+OBJECT MODULE PLACED IN .\OutPut\OS_CPU_A.obj
+ASSEMBLER INVOKED BY: D:\Keil_v5\C51\BIN\A51.EXE uCosii\OS_CPU_A.ASM SET(LARGE) DEBUG PRINT(.\OutPut\OS_CPU_A.lst) OBJEC
+                      T(.\OutPut\OS_CPU_A.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+                       1     
+                       2     
+                       3     
+                       4     
+                       5     
+                       6     
+                       7     
+                       8     
+                       9     
+                      10     
+                      11     
+                      12     
+                      13     
+                      14     
+                      15     
+                      16     
+                      17     ;Î±Ö¸ÁîÏêÏ¸ÓÃ·¨Çë²éA51.PDFÎÄ¼þ
+                      18     ;³ÌÐò½á¹¹Ïê¼û¡¶uC/OS-II¡·193-198Ò³
+                      19     
+                      20     ;²»ÓÃ´ËÓï¾ä£¡£¡£¡ $CASE    ;±êºÅºÍ±äÁ¿ÃûÇø·Ö´óÐ¡Ð´
+                      21     
+                      22     $nomod51 
+  00AF                23     EA      BIT     0A8H.7
+  0081                24     SP      DATA    081H
+  00F0                25     B       DATA    0F0H
+  00E0                26     ACC     DATA    0E0H
+  0083                27     DPH     DATA    083H
+  0082                28     DPL     DATA    082H
+  00D0                29     PSW     DATA    0D0H
+  008C                30     TR0     BIT     088H.4
+  008C                31     TH0     DATA    08CH
+  008A                32     TL0     DATA    08AH
+                      33     
+                      34             NAME OS_CPU_A    ;Ä£¿éÃû
+                      35             
+                      36     ;¶¨ÒåÖØ¶¨Î»¶Î
+                      37     ?PR?OSStartHighRdy?OS_CPU_A    SEGMENT CODE
+                      38     ?PR?OSCtxSw?OS_CPU_A           SEGMENT CODE
+                      39     ?PR?OSIntCtxSw?OS_CPU_A        SEGMENT CODE
+                      40     ?PR?OSTickISR?OS_CPU_A         SEGMENT CODE
+                      41     ?PR?_?serial?OS_CPU_A          SEGMENT CODE
+                      42             
+                      43     ;ÉùÃ÷ÒÓÃÈ«¾Ö±äÁ¿ºÍÍâ²¿×Ó³ÌÐò
+                      44             EXTRN DATA  (?C_XBP)           ;·ÂÕæ¶ÑÕ»Ö¸ÕëÓÃÓÚÖØÈë¾Ö²¿±äÁ¿±£´æ,ÎªV2.51ÄÜ±»CÊ¹ÓÃ¶¨
+                             ÒåÔÚ±¾Ä£¿éÖÐ
+                      45     
+                      46             EXTRN IDATA (OSTCBCur)             ;Ö¸ÏòÕÔÚÔËÐÐÈÎÎñ¿ØÖÆ¿éµÄÖ¸Õë
+                      47             EXTRN IDATA (OSTCBHighRdy)         ;Ö¸Ïò×î¸ßÓÅÏÈ¼¶¾ÍÐ÷ÈÎÎñ¿éµÄÖ¸Õë
+                      48             EXTRN IDATA (OSRunning)            ;ÏµÍ³ÊÇ·ñÔËÐÐ±êÖ¾
+                      49             EXTRN IDATA (OSPrioCur)            ;Õ×ÖÔËÐÐÈÎÎñµÄÓÅÏÈ¼¶
+                      50             EXTRN IDATA (OSPrioHighRdy)        ;¾ßÓÐ×î¸ßÓÅÏÈ¼¶±ðµÄ¾ÍÐ÷ÈÎÎñµÄÓÅÏÈ¼¶
+                      51       
+                      52             EXTRN CODE  (_?OSTaskSwHook)   ;ÏµÍ³ÈÎÎñÇÐ»»¹³×Ó
+                      53             EXTRN CODE  (_?OSIntEnter)         ;½øÈëÖÐ¶Ïº¯Ê
+                      54             EXTRN CODE  (_?OSIntExit)          ;ÍË³öÖÐ¶Ïº¯Ê
+                      55             EXTRN CODE  (_?OSTimeTick)     ;ÄÚºËÏµÍ³½ÚÅÄº¯Ê      
+                      56             EXTRN CODE  (_?serial)             ;´®¿ÚÖÐ¶Ïº¯Ê
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     2
+
+                      57                 
+                      58     ;¶ÔÍâÉùÃ÷4¸ö²»¿ÉÖØÈëº¯Ê   Íâ²¿¿ÉÊ¹ÓÃ
+                      59             PUBLIC OSStartHighRdy     ;¶ÎÃû
+                      60             PUBLIC OSCtxSw                    ;¶ÎÃû
+                      61             PUBLIC OSIntCtxSw                 ;¶ÎÃû
+                      62             PUBLIC OSTickISR                  ;¶ÎÃû
+                      63             PUBLIC SerialISR          ;¶ÎÃû
+                      64     
+                      65     
+                      66     ;·ÖÅä¶ÑÕ»¿Õ¼ä¡£Ö»¹ØÐÄ´óÐ¡£¬¶ÑÕ»ÆðµãÓÉkeil¾ö¶¨£¬Í¨¹±êºÅ¿ÉÒÔ»ñµÃkeil·ÖÅäµÄSPÆðµã¡£
+                      67     ?STACK SEGMENT IDATA
+----                  68             RSEG ?STACK
+0000                  69     OSStack:
+0000                  70             DS 30H
+  FFFF                71     OSStkStart IDATA OSStack-1
+                      72     
+                      73     ;¶¨ÒåÑ¹Õ»ºê  ×Ó³ÌÐòµ÷ÓÃ
+                      74     PUSHALL     MACRO       
+                      75                     PUSH ACC
+                      76                     PUSH B
+                      77                     PUSH DPH
+                      78                     PUSH DPL
+                      79                     PUSH PSW
+                      80                     MOV  A,R0   ;R0-R7ÈëÕ»
+                      81                     PUSH ACC
+                      82                     MOV  A,R1
+                      83                     PUSH ACC
+                      84                     MOV  A,R2
+                      85                     PUSH ACC
+                      86                     MOV  A,R3
+                      87                     PUSH ACC
+                      88                     MOV  A,R4
+                      89                     PUSH ACC
+                      90                     MOV  A,R5
+                      91                     PUSH ACC
+                      92                     MOV  A,R6
+                      93                     PUSH ACC
+                      94                     MOV  A,R7
+                      95                     PUSH ACC
+                      96                     ;PUSH SP    ;²»±Ø±£´æSP£¬ÈÎÎñÇÐ»»Ê±ÓÉÏàÓ¦³ÌÐòµ÷Õû
+                      97                     ENDM
+                      98     ;¶¨Òå³öÕ»ºê  ×Ó³ÌÐòµ÷ÓÃ   
+                      99     POPALL          MACRO                    ;²»±Ø±£´æSP£¬ÈÎÎñÇÐ»»Ê±ÓÉÏàÓ¦³ÌÐòµ÷Õû   R0-R7³öÕ» 
+                               
+                     100                     POP  ACC    
+                     101                     MOV  R7,A
+                     102                     POP  ACC
+                     103                     MOV  R6,A
+                     104                     POP  ACC
+                     105                     MOV  R5,A
+                     106                     POP  ACC
+                     107                     MOV  R4,A
+                     108                     POP  ACC
+                     109                     MOV  R3,A
+                     110                     POP  ACC
+                     111                     MOV  R2,A
+                     112                     POP  ACC
+                     113                     MOV  R1,A
+                     114                     POP  ACC
+                     115                     MOV  R0,A
+                     116                     POP  PSW
+                     117                     POP  DPL
+                     118                     POP  DPH
+                     119                     POP  B
+                     120                     POP  ACC
+                     121                     ENDM
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     3
+
+                     122         
+                     123     ;×Ó³ÌÐò
+                     124     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             ;;;;;;;;;;;;;;;;;;;
+                     125     ;OSStart()ÖÐµ÷ÓÃ£¬ÓÀÔ¶Ö»Ö´ÐÐÒ»´Î
+----                 126             RSEG ?PR?OSStartHighRdy?OS_CPU_A
+0000                 127     OSStartHighRdy:
+                     128             USING 0    ; (1) ÉÏµçºó51×Ô¶¯¹ØÖÐ¶Ï£¬´Ë´¦²»±ØÓÃCLR EAÖ¸Áî£¬ÒòÎªµ½´Ë´¦»¹Î´¿ªÖÐ¶Ï£¬±¾
+                             ³ÌÐòÍË³öºó£¬¿ªÖÐ¶Ï; Ê¹ÓÃ¼Ä´æÆ÷×é0
+0000 120000   F      129             LCALL _?OSTaskSwHook    ; (2) µ÷ÓÃÈÎÎñ¹³×Ó£¬¿ÉÒÔÊÇ¿ÕµÄ
+                     130     
+0003                 131     OSCtxSw_in:                ;×Ó³ÌÐòÄ£ÄâÈíÖÐ¶Ï
+                     132         
+                     133             ;OSTCBCur -> DPTR  »ñµÃµ±Ç°TCBÖ¸Õë£¬Ïê¼ûC51.PDFµÚ178Ò³
+0003 7800     F      134             MOV  R0,#LOW (OSTCBCur) ; (3) »ñµÃOSTCBCurÖ¸ÕëµÍµØÖ·£¬Ö¸ÕëÕ¼3×Ö½Ú¡£+0ÀàÐÍ+1¸ß8Î»Ê¾Ý
+                             +2µÍ8Î»Ê¾Ý
+0005 08              135             INC  R0                                 ; Ê¹ÓÃOSSTartHighRdyºÍOSTCBCurÐ§¹ûÒ»Ñù
+0006 8683            136             MOV  DPH,@R0            ; »ñÈ¡ÐèÒª»Ö¸´µÄ×î¸ßÓÅÏÈ¼¶ÈÎÎñµÄ¶ÑÕ»Ö¸Õë
+0008 08              137             INC  R0
+0009 8682            138             MOV  DPL,@R0                    ;DPTR 16Ê¾ÝÖ¸Õë ÌØÊâ¹¦ÄÜ¼Ä´æÆ÷  = DPH + DPL
+                     139             
+                     140             ;OSTCBCur -> OSTCBStkPtr -> DPTR  »ñµÃ×î¸ßÓÅÏÈ¼¶ÈÎÎñµÄ¶ÑÕ»Ö¸Õë  Ö¸ÕëÕ¼3×Ö½Ú¡£+0ÀàÐÍ
+                             +1¸ß8Î»Ê¾Ý+2µÍ8Î»Ê¾Ý
+000B A3              141             INC  DPTR                       ; (5)
+000C E0              142             MOVX A,@DPTR            ; OSTCBStkPtrÊÇvoidÖ¸Õë
+000D F8              143             MOV  R0,A
+000E A3              144             INC  DPTR
+000F E0              145             MOVX A,@DPTR
+0010 F9              146             MOV  R1,A
+0011 8883            147             MOV  DPH,R0                              
+0013 8982            148             MOV  DPL,R1                              ;È¡³öOSTCBÖÐµÄÓÃ»§¶ÑÕ»Ö¸ÕëµØÖ·µ½DPTR
+                     149         
+                     150             ;*UserStkPtr -> R5  ÓÃ»§¶ÑÕ»ÆðÊ¼µØÖ·ÄÚÈÝ(¼´ÓÃ»§¶ÑÕ»³¤¶È·ÅÔÚ´Ë´¦)  
+0015 E0              151             MOVX A,@DPTR             ;(6) ÓÃ»§¶ÑÕ»ÖÐÊÇunsigned charÀàÐÍÊ¾Ý   
+0016 FD              152             MOV  R5,A                ;R5 = ÓÃ»§¶ÑÕ»³¤¶È
+                     153         
+                     154             ;»Ö¸´ÏÖ³¡¶ÑÕ»ÄÚÈÝ
+0017 7800     F      155             MOV  R0,#OSStkStart              ;(7)  ÏµÍ³¶ÑÕ»ÆðÊ¼µØÖ·  R0 = OSStkStart
+                     156             
+0019                 157     restore_stack:                                   ;½«ÓÃ»§¶ÑÕ»ÖÐµÄ¼Ä´æÆ÷ÖµÍÆÈëÏµÍ³Õ»
+0019 A3              158             INC  DPTR                                ;ÒÆ¶¯2×Ö½Ú³¤¶È
+001A 08              159             INC  R0
+001B E0              160             MOVX A,@DPTR
+001C F6              161             MOV  @R0,A
+001D DDFA            162             DJNZ R5,restore_stack    ;R5 = ÓÃ»§¶ÑÕ»³¤¶È
+                     163         
+                     164             ;»Ö¸´¶ÑÕ»Ö¸ÕëSP                  Ö¸ÏòÏµÍ³Õ»Õ»¶¥
+001F 8881            165             MOV  SP,R0                               ;ÏµÍ³¶ÑÕ»¿Õ¼ä´óÐ¡ = ÈÎÎñ¶ÑÕ»¿Õ¼ä´óÐ¡ = SP 
+                             - OSStkStart
+                     166         
+                     167             ;»Ö¸´·ÂÕæ¶ÑÕ»Ö¸Õë?C_XBP        
+0021 A3              168             INC  DPTR
+0022 E0              169             MOVX A,@DPTR
+0023 F500     F      170             MOV  ?C_XBP,A    ;?C_XBP ·ÂÕæ¶ÑÕ»Ö¸Õë¸ß8Î»
+0025 A3              171             INC  DPTR
+0026 E0              172             MOVX A,@DPTR
+0027 F500     F      173             MOV  ?C_XBP+1,A  ;?C_XBP ·ÂÕæ¶ÑÕ»Ö¸ÕëµÍ8Î»
+                     174         
+                     175             ;ÏµÍ³ÔËÐÐ±êÖ¾ OSRunning = TRUE
+0029 7800     F      176             MOV  R0,#LOW (OSRunning)        ;È«¾Ö±äÁ¿
+002B 7601            177             MOV  @R0,#01
+                     178         
+                     179             POPALL     ;Ö´ÐÐ³öÕ»ºê£¬½«ÏµÍ³Õ»ÖÐ´æ´¢µÄÄÚÈÝ»Ö¸´µ½¼Ä´æÆ÷£¬¾ÍºÃÏñ¸Õ·¢Éú¹ÖÐ¶ÏÒ»Ñù
+004F D2AF            201             SETB EA    ;¿ªÖÐ¶Ï
+0051 32              202             RETI
+                     203     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     4
+
+                             ;;;;;;;;;;;;;;;;;;;
+                     204     ;º¯ÊÊµÏÖÈÎÎñ¼¶ÈÎÎñÇÐ»»,1,ÊÖ¶¯±£´æCPUÔÚÖÐ¶ÏÀ´ÁÙÊ±×Ô¶¯±£´æµÄ¼Ä´æÆ÷(PC)£»2£¬¶îÍâµÄ¼Ä´æÆ÷
+----                 205             RSEG ?PR?OSCtxSw?OS_CPU_A
+0000                 206     OSCtxSw:    
+                     207             USING 0            ;Ä¬ÈÏÊ¹ÓÃR0~R7
+                     208                     PUSHALL                    ;PCÖµÒÑ¾­Ñ¹ÈëÏµÍ³¶ÑÕ»£¬½«Ê£ÓàµÄ¼Ä´æÆ÷¼ÄÑ¹ÈëÏµÍ³Õ
+                             »
+                     231         
+0022                 232     OSIntCtxSw_in:
+                     233         
+                     234             ;»ñµÃ¶ÑÕ»³¤¶ÈºÍÆðÖ·
+0022 E581            235             MOV  A,SP
+0024 C3              236             CLR  C
+0025 9400     F      237             SUBB A,#OSStkStart
+0027 FD              238             MOV  R5,A          ;»ñµÃ¶ÑÕ»³¤¶È   R5 = SP - OSStkStart   
+                     239         
+                     240             ;OSTCBCur -> DPTR  »ñµÃµ±Ç°TCBÖ¸Õë
+0028 7800     F      241             MOV  R0,#LOW (OSTCBCur) ;»ñµÃOSTCBCurÖ¸ÕëµÍµØÖ·£¬Ö¸ÕëÕ¼3×Ö½Ú¡£+0ÀàÐÍ+1¸ß8Î»Ê¾Ý+2µÍ8
+                             Î»Ê¾Ý u_COS_II.HÖÐÉùÃ÷
+002A 08              242             INC  R0
+002B 8683            243             MOV  DPH,@R0       ;È«¾Ö±äÁ¿OSTCBCurÔÚIDATAÖÐ
+002D 08              244             INC  R0
+002E 8682            245             MOV  DPL,@R0
+                     246         
+                     247             ;OSTCBCur->OSTCBStkPtr -> DPTR  »ñµÃÓÃ»§£¨ÈÎÎñ£©¶ÑÕ»Ö¸Õë
+0030 A3              248             INC  DPTR        ;Ö¸ÕëÕ¼3×Ö½Ú¡£+0ÀàÐÍ+1¸ß8Î»Ê¾Ý+2µÍ8Î»Ê¾Ý
+0031 E0              249             MOVX A,@DPTR     ;.OSTCBStkPtrÊÇvoidÖ¸Õë
+0032 F8              250             MOV  R0,A
+0033 A3              251             INC  DPTR
+0034 E0              252             MOVX A,@DPTR
+0035 F9              253             MOV  R1,A
+0036 8883            254             MOV  DPH,R0
+0038 8982            255             MOV  DPL,R1
+                     256             
+                     257             ;±£´æ¶ÑÕ»³¤¶È
+003A ED              258             MOV  A,R5
+003B F0              259             MOVX @DPTR,A
+                     260         
+003C 7800     F      261             MOV  R0,#OSStkStart  ;»ñµÃ¶ÑÕ»ÆðÖ·
+003E                 262     save_stack:                                      ;±£´æµ±Ç°ÏµÍ³¶ÑÕ»ÄÚÈÝµ½ÓÃ»§¶ÑÕ» 
+003E A3              263             INC  DPTR
+003F 08              264             INC  R0
+0040 E6              265             MOV  A,@R0
+0041 F0              266             MOVX @DPTR,A
+0042 DDFA            267             DJNZ R5,save_stack
+                     268             
+                     269             ;±£´æ·ÂÕæ¶ÑÕ»Ö¸Õë?C_XBP
+0044 A3              270             INC  DPTR                                          ;(9)
+0045 E500     F      271             MOV  A,?C_XBP    ;?C_XBP ·ÂÕæ¶ÑÕ»Ö¸Õë¸ß8Î»
+0047 F0              272             MOVX @DPTR,A
+0048 A3              273             INC  DPTR
+0049 E500     F      274             MOV  A,?C_XBP+1  ;?C_XBP ·ÂÕæ¶ÑÕ»Ö¸ÕëµÍ8Î»
+004B F0              275             MOVX @DPTR,A        
+                     276         
+004C 120000   F      277             LCALL _?OSTaskSwHook                    ;(10)  ÈÎÎñ½»»»¹³×Ó
+                     278             
+                     279             ;OSTCBCur = OSTCBHighRdy  ½«µ±Ç°ÈÎÎñµÄÖ¸ÕëÖ¸ÏòÒª»Ö¸´ÔËÐÐµÄÈÎÎñ(ÓÅÏÈ¼¶×î¸ßµÄÈÎÎñ)
+004F 7800     F      280             MOV  R0,#OSTCBCur                               ;(11)
+0051 7900     F      281                     MOV  R1,#OSTCBHighRdy
+0053 E7              282                     MOV  A,@R1
+0054 F6              283             MOV  @R0,A
+0055 08              284             INC  R0
+0056 09              285                     INC  R1
+0057 E7              286                     MOV  A,@R1
+0058 F6              287             MOV  @R0,A
+0059 08              288             INC  R0
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     5
+
+005A 09              289                     INC  R1
+005B E7              290                     MOV  A,@R1
+005C F6              291             MOV  @R0,A                                         ;Ö¸Õë3¸ö×Ö½Ú ²Ù×÷3´Î
+                     292                     
+                     293             ;OSPrioCur = OSPrioHighRdy 
+005D 7800     F      294             MOV  R0,#OSPrioCur                         ;(12)
+005F 7900     F      295                     MOV  R1,#OSPrioHighRdy
+0061 E7              296                     MOV  A,@R1
+0062 F6              297             MOV  @R0,A
+                     298             
+0063 020000   F      299             LJMP OSCtxSw_in                                 ;Ä£ÄâÖÐ¶ÏÍê³É
+                     300     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             ;;;;;;;;;;;;;;;;;;;
+----                 301             RSEG ?PR?OSIntCtxSw?OS_CPU_A
+                     302             
+0000                 303     OSIntCtxSw:
+                     304     
+                     305             ;µ÷ÕûSPÖ¸ÕëÈ¥µôÔÚµ÷ÓÃOSIntExit(),OSIntCtxSw()¹³ÌÖÐÑ¹Èë¶ÑÕ»µÄ¶àÓàÄÚÈÝ
+                     306             ;SP=SP-4
+                     307     
+0000 E581            308             MOV  A,SP
+0002 C3              309             CLR  C
+0003 9404            310             SUBB A,#4
+0005 F581            311             MOV  SP,A
+                     312             
+0007 020000   F      313             LJMP OSIntCtxSw_in                          ;Ä£ÄâÖÐ¶ÏÍê³É
+                     314     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             ;;;;;;;;;;;;;;;;;;;
+                     315     ;ÏµÍ³½ÚÅÄ´¦Àí
+----                 316             CSEG AT 000BH    ;OSTickISR
+000B 020000   F      317             LJMP OSTickISR   ;Ê¹ÓÃ¶¨Ê±Æ÷0
+----                 318             RSEG ?PR?OSTickISR?OS_CPU_A
+                     319     
+0000                 320     OSTickISR:        
+                     321             USING 0        
+                     322             PUSHALL
+                     345             
+0022 C28C            346             CLR  TR0                 ;Í£Ö¹¶¨Ê±Æ÷0
+0024 758CDC          347             MOV  TH0,#0DCH   ;³õÊ¼»¯¶¨Ê±Æ÷£¬Tick=100´Î/Ãë
+0027 758A00          348             MOV  TL0,#00H    ;
+002A D28C            349             SETB TR0                 ;Æô¶¯¶¨Ê±Æ÷0
+                     350             
+002C 120000   F      351             LCALL _?OSIntEnter   ;ÖÐ¶Ïº¯ÊÕÔÚÖ´ÐÐ
+002F 120000   F      352             LCALL _?OSTimeTick       ;µ÷ÓÃ
+0032 120000   F      353             LCALL _?OSIntExit        ;ÖÐ¶Ïº¯ÊÒÑ¾­ÍË³ö
+                     354     
+                     355             POPALL        
+0057 32              377             RETI
+                     378     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             ;;;;;;;;;;;;;;;;;;;
+                     379     ;´®¿ÚÖÐ¶Ï´¦Àí
+----                 380             CSEG AT 0023H    
+0023 020000   F      381             LJMP SerialISR   ;´®¿ÚÏµÍ³¹¦ÄÜ²¿·Ö
+----                 382             RSEG ?PR?_?serial?OS_CPU_A
+                     383             
+0000                 384     SerialISR:
+                     385             
+                     386             USING 0   
+0000 C2AF            387                     CLR  EA        ;ÏÈ¹ØÖÐ¶Ï£¬ÒÔ·ÀÖÐ¶ÏÇ¶Ì×
+                     388             PUSHALL        ;±£´æËùÓÐ¼Ä´æÆ÷
+0024 120000   F      411                     LCALL _?OSIntEnter
+0027 120000   F      412             LCALL _?serial   ;´®¿ÚÖÐ¶Ï´¦Àí   
+002A 120000   F      413                     LCALL _?OSIntExit
+                     414             POPALL        ;»Ö¸´ËùÓÐ¼Ä´æÆ÷
+004F D2AF            436                     SETB EA
+0051 32              437             RETI
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     6
+
+                     438     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                             ;;;;;;;;;;;;;;;;;;;
+                     439             END
+A51 MACRO ASSEMBLER  OS_CPU_A                                                             07/08/2019 12:20:44 PAGE     7
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E                      T Y P E  V A L U E   ATTRIBUTES
+
+?C_XBP. . . . . . . . . . .  D ADDR   -----       EXT
+?PR?OSCTXSW?OS_CPU_A. . . .  C SEG    0066H       REL=UNIT
+?PR?OSINTCTXSW?OS_CPU_A . .  C SEG    000AH       REL=UNIT
+?PR?OSSTARTHIGHRDY?OS_CPU_A  C SEG    0052H       REL=UNIT
+?PR?OSTICKISR?OS_CPU_A. . .  C SEG    0058H       REL=UNIT
+?PR?_?SERIAL?OS_CPU_A . . .  C SEG    0052H       REL=UNIT
+?STACK. . . . . . . . . . .  I SEG    0030H       REL=UNIT
+ACC . . . . . . . . . . . .  D ADDR   00E0H   A   
+B . . . . . . . . . . . . .  D ADDR   00F0H   A   
+DPH . . . . . . . . . . . .  D ADDR   0083H   A   
+DPL . . . . . . . . . . . .  D ADDR   0082H   A   
+EA. . . . . . . . . . . . .  B ADDR   00A8H.7 A   
+OSCTXSW . . . . . . . . . .  C ADDR   0000H   R   SEG=?PR?OSCTXSW?OS_CPU_A
+OSCTXSW_IN. . . . . . . . .  C ADDR   0003H   R   SEG=?PR?OSSTARTHIGHRDY?OS_CPU_A
+OSINTCTXSW. . . . . . . . .  C ADDR   0000H   R   SEG=?PR?OSINTCTXSW?OS_CPU_A
+OSINTCTXSW_IN . . . . . . .  C ADDR   0022H   R   SEG=?PR?OSCTXSW?OS_CPU_A
+OSPRIOCUR . . . . . . . . .  I ADDR   -----       EXT
+OSPRIOHIGHRDY . . . . . . .  I ADDR   -----       EXT
+OSRUNNING . . . . . . . . .  I ADDR   -----       EXT
+OSSTACK . . . . . . . . . .  I ADDR   0000H   R   SEG=?STACK
+OSSTARTHIGHRDY. . . . . . .  C ADDR   0000H   R   SEG=?PR?OSSTARTHIGHRDY?OS_CPU_A
+OSSTKSTART. . . . . . . . .  I ADDR   FFFFH   R   SEG=?STACK
+OSTCBCUR. . . . . . . . . .  I ADDR   -----       EXT
+OSTCBHIGHRDY. . . . . . . .  I ADDR   -----       EXT
+OSTICKISR . . . . . . . . .  C ADDR   0000H   R   SEG=?PR?OSTICKISR?OS_CPU_A
+OS_CPU_A. . . . . . . . . .  N NUMB   -----       
+PSW . . . . . . . . . . . .  D ADDR   00D0H   A   
+RESTORE_STACK . . . . . . .  C ADDR   0019H   R   SEG=?PR?OSSTARTHIGHRDY?OS_CPU_A
+SAVE_STACK. . . . . . . . .  C ADDR   003EH   R   SEG=?PR?OSCTXSW?OS_CPU_A
+SERIALISR . . . . . . . . .  C ADDR   0000H   R   SEG=?PR?_?SERIAL?OS_CPU_A
+SP. . . . . . . . . . . . .  D ADDR   0081H   A   
+TH0 . . . . . . . . . . . .  D ADDR   008CH   A   
+TL0 . . . . . . . . . . . .  D ADDR   008AH   A   
+TR0 . . . . . . . . . . . .  B ADDR   0088H.4 A   
+_?OSINTENTER. . . . . . . .  C ADDR   -----       EXT
+_?OSINTEXIT . . . . . . . .  C ADDR   -----       EXT
+_?OSTASKSWHOOK. . . . . . .  C ADDR   -----       EXT
+_?OSTIMETICK. . . . . . . .  C ADDR   -----       EXT
+_?SERIAL. . . . . . . . . .  C ADDR   -----       EXT
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

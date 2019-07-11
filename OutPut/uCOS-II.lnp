@@ -1,0 +1,18 @@
+".\OutPut\main.obj",
+".\OutPut\STARTUP.obj",
+".\OutPut\keyAction.obj",
+".\OutPut\keyBoard.obj",
+".\OutPut\LCD12864.obj",
+".\OutPut\timeN.obj",
+".\OutPut\interface.obj",
+".\OutPut\OS_CORE.obj",
+".\OutPut\OS_CPU_C.obj",
+".\OutPut\OS_MBOX.obj",
+".\OutPut\OS_MEM.obj",
+".\OutPut\OS_Q.obj",
+".\OutPut\OS_SEM.obj",
+".\OutPut\OS_TASK.obj",
+".\OutPut\OS_TIME.obj",
+".\OutPut\OS_CPU_A.obj" 
+TO ".\OutPut\uCOS-II" 
+PRINT(".\OutPut\uCOS-II.m51") RAMSIZE(256) 

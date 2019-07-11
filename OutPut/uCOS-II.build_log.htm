@@ -1,0 +1,62 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: μVision V5.14.2
+Copyright (C) 2015 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: yu dong, ydduong, LIC=SDJMM-XWDMW-0AWDL-0SF1G-4KUDB-7GBEK
+ 
+Tool Versions:
+Toolchain:       PK51 Prof. Developers Kit  Version: 9.54
+Toolchain Path:  D:\Keil_v5\C51\BIN
+C Compiler:      C51.exe V9.54
+Assembler:       A51.exe V8.02c
+Linker/Locator:  BL51.exe V6.22
+Library Manager: LIB51.exe V4.30.1.0
+Hex Converter:   OH51.exe V2.7.0.0
+CPU DLL:         S8051.DLL V3.100.0.0
+Dialog DLL:      DP51.DLL V2.62.0.1 
+<h2>Project:</h2>
+D:\YDDUONG\大学课程学习资料\大三课程\大三下\嵌入式系统实习\uCosii\uCOSII2.51_2019.4.2\uCOSII2.51_2018\uCosii_51.uvproj
+Project File Date:  07/10/2019
+
+<h2>Output:</h2>
+Build target 'uCOS_II_51'
+compiling main.c...
+Source\main.c(59): warning C294: unreachable code
+Source\main.c(73): warning C294: unreachable code
+Source\main.c(85): warning C294: unreachable code
+linking...
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?DISPLAY?TIMEN
+    CALLER1: ?C_C51STARTUP
+    CALLER2: ?PR?TIMERCOUNTER_2?TIMEN
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?PRINTF?PRINTF
+    CALLER1: ?C_C51STARTUP
+    CALLER2: ?PR?TIMERCOUNTER_2?TIMEN
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?_LCD12864SHOWSTRING?LCD12864
+    CALLER1: ?C_C51STARTUP
+    CALLER2: ?PR?TIMERCOUNTER_2?TIMEN
+*** WARNING L1: UNRESOLVED EXTERNAL SYMBOL
+    SYMBOL:  GRADE
+    MODULE:  .\OutPut\interface.obj (INTERFACE)
+*** WARNING L2: REFERENCE MADE TO UNRESOLVED EXTERNAL
+    SYMBOL:  GRADE
+    MODULE:  .\OutPut\interface.obj (INTERFACE)
+    ADDRESS: 2F69H
+*** WARNING L1: UNRESOLVED EXTERNAL SYMBOL
+    SYMBOL:  _?SERIAL
+    MODULE:  .\OutPut\OS_CPU_A.obj (OS_CPU_A)
+*** WARNING L2: REFERENCE MADE TO UNRESOLVED EXTERNAL
+    SYMBOL:  _?SERIAL
+    MODULE:  .\OutPut\OS_CPU_A.obj (OS_CPU_A)
+    ADDRESS: 2B01H
+Program Size: data=117.2 xdata=729 code=12409
+creating hex file from ".\OutPut\uCOS-II"...
+".\OutPut\uCOS-II" - 0 Error(s), 10 Warning(s).
+</pre>
+</body>
+</html>

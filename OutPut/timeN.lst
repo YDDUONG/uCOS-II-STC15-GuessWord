@@ -1,0 +1,144 @@
+C51 COMPILER V9.54   TIMEN                                                                 07/09/2019 10:46:10 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TIMEN
+OBJECT MODULE PLACED IN .\OutPut\timeN.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE Source\other\timeN.c LARGE OPTIMIZE(8,SIZE) BROWSE DEBUG OBJECTEXTEND PR
+                    -INT(.\OutPut\timeN.lst) OBJECT(.\OutPut\timeN.obj)
+
+line level    source
+
+   1          #include <IAP15W4K61S4.h>
+   2          #include <stdio.h>
+   3          
+   4          typedef unsigned char uChar8;
+   5          typedef unsigned int uInt16;
+   6          
+   7          /**************************************¶¨ÒåÈ«¾Ö±äÁ¿*******************************************************
+             -*************/        
+   8          sbit LED = P5^5;                                                 //LEDµÆ
+   9          uInt16 count = 0;                                                //¼ÆÊýÆ÷
+  10          int time = 100;                                                  //µ¹¼ÆÊ±³õÊ¼Ê±¼ä
+  11          struct {                                                         //¶¨Ê±Æ÷³õÊ¼Öµ½á¹¹Ìå
+  12              uChar8 TH;
+  13              uChar8 TL;
+  14          }Timer1, Timer2;
+  15          
+  16          /**************************************¶¨ÒåÍâ²¿º¯Êý½Ó¿Ú***************************************************
+             -*********************/
+  17          extern void LCD12864ShowString(uChar8 x, uChar8 y, uChar8* str); //µÚyÐÐµÚxÁÐ£¬¿ªÊ¼´òÓ¡str
+  18          extern void LCD12864EraseArea(uChar8 x, uChar8 y, uChar8 size);  //´ÓµÚyÐÐµÚxÁÐ¿ªÊ¼£¬É¾³ýsize×Ö·
+  19          extern void img_dele_underLine(void);                            //É¾³ýËùÓÐÏÂ»®Ïß
+  20          extern void keyScanner(void);                                    //°´¼üÉ¨Ãè
+  21          extern uChar8 interface;                                         //È«¾Ö±äÁ¿£¬±íÊ¾µ±Ç°Ëù´¦½çÃæ
+  22          
+  23          /**************************************º¯ÊýÉùÃ÷***********************************************************
+             -*************/
+  24          void configureTimer0(void) reentrant;                            //ÏµÍ³Ê±ÖÓtime0ÅäÖÃ
+  25          void configureTimer1(uChar8 ms);                                 //¶¨Ê±Æ÷1ÅäÖÃ
+  26          void TimerCounter_1 (void);                                      //¶¨Ê±Æ÷1ÖÐ¶Ï£ºÉ¨Ãè°´¼ü
+  27          void configureTimer2(void);                                      //¶¨Ê±Æ÷2ÅäÖÃ
+  28          void TimerCounter_2 (void);                                      //¶¨Ê±Æ÷1ÖÐ¶Ï£ºµ¹¼ÆÊ±
+  29          void display(void);                                              //ÏÔÊ¾µ¹¼ÆÊ±
+  30          
+  31          
+  32          //ÏµÍ³Ê±ÖÓtime0ÅäÖÃ
+  33          void configureTimer0(void) reentrant
+  34          {
+  35   1          TMOD &= 0xF0;
+  36   1              TMOD |= 0x01;                                                //¶¨Ê±Æ÷0£ºÄ£Ê½1(16Î»¶¨Ê±Æ÷)£¬½öÊÜTR0¿ØÖÆ£»¶
+             -¨Ê±Æ÷1£º²¨ÌØÂÊ·¢ÉúÆ÷
+  37   1      //  TH0 = 0xDC;                                                  //¶¨ÒåTick=100´Î/Ãë(¼´0.01Ãë/´Î),TH,TLÖµÓ
+             -ëCPUµÄÆµÂÊÓÐ¹Ø(11.0592M)
+  38   1      //  TL0 = 0x00;                                                      //OS_CPU_C.CÖÐ¶¨Ê±Æ÷ÖÐ¶ÏÏìÓ¦Ò²ÒªÉèÖÃ£¬OS_CF
+             -G.HÖÐOS_TICKS_PER_SECÒ²ÓÐ¹ØÏµ
+  39   1          TR0  = 1;                                                        //±ØÐëÆô¶¯
+  40   1      }
+  41          
+  42          //¶¨Ê±Æ÷1ÅäÖÃ
+  43          void configureTimer1(uChar8 ms)
+  44          {
+  45   1          unsigned long timer = 11059200 / 12;
+  46   1          timer = timer * ms / 1000;
+  47   1          timer = 65536 - timer;
+  48   1          TH1 = (uChar8)(timer >> 8);
+C51 COMPILER V9.54   TIMEN                                                                 07/09/2019 10:46:10 PAGE 2   
+
+  49   1          TL1 = (uChar8)timer;
+  50   1          Timer1.TH = TH1;
+  51   1          Timer1.TL = TL1;
+  52   1          TMOD &= 0xF0;
+  53   1          TMOD |= 0x01;
+  54   1          ET1 = 1;
+  55   1          TR1 = 1;
+  56   1      }
+  57          
+  58          //¶¨Ê±Æ÷1ÖÐ¶Ï
+  59          void TimerCounter_1 (void) interrupt 3 
+  60          { 
+  61   1          TH1 = Timer1.TH;
+  62   1          TL1 = Timer1.TL;
+  63   1              keyScanner();
+  64   1      }
+  65          
+  66          
+  67          //¶¨Ê±Æ÷2ÅäÖÃ
+  68          void configureTimer2(void)
+  69          {
+  70   1              AUXR &= 0xFB;
+  71   1              T2H = 0xFC;
+  72   1              T2L = 0X67;
+  73   1              Timer2.TH = T2H;
+  74   1          Timer2.TL = T2L;
+  75   1              //IE2 |= 0x04;
+  76   1              AUXR |= 0x10;
+  77   1      }
+  78          
+  79          //¶¨Ê±Æ÷2ÖÐ¶Ï
+  80          void TimerCounter_2 (void) interrupt 12
+  81          { 
+  82   1              T2H = Timer2.TH;
+  83   1              T2L = Timer2.TL;
+  84   1              count++;
+  85   1              if(count == 1000)
+  86   1              {
+  87   2                      display();
+  88   2                      //LED = !LED;
+  89   2                      count = 0;
+  90   2              }
+  91   1      }
+  92          
+  93          
+  94          //ÏÔÊ¾µ¹¼ÆÊ±
+  95          void display(void)
+  96          {
+  97   1              uChar8 str[20];
+  98   1              sprintf(str, "µ¹¼ÆÊ±: %03d", time--);
+  99   1              LCD12864EraseArea(0, 2, 20);
+ 100   1              LCD12864ShowString(1, 2, str);
+ 101   1              if(time == -1)
+ 102   1              {
+ 103   2                      img_dele_underLine();
+ 104   2                      sprintf(str, "ÓÎÏ·½áÊø");
+ 105   2                      LCD12864EraseArea(0, 1, 20);
+ 106   2                      LCD12864ShowString(2, 1, str);
+ 107   2                      IE2 = 0x00;                 //¹Ø±Õ¶¨Ê±Æ÷2
+ 108   2                      interface = 2;
+ 109   2              }
+ 110   1      }
+C51 COMPILER V9.54   TIMEN                                                                 07/09/2019 10:46:10 PAGE 3   
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    440    ----
+   CONSTANT SIZE    =     22    ----
+   XDATA SIZE       =      8      24
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

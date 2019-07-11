@@ -1,0 +1,295 @@
+C51 COMPILER V9.54   SERIAL                                                                07/08/2019 15:19:37 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE SERIAL
+OBJECT MODULE PLACED IN .\OutPut\serial.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\serial.c LARGE OPTIMIZE(8,SIZE) BROWSE DEBUG OBJECTEXTEND PRINT(.\O
+                    -utPut\serial.lst) OBJECT(.\OutPut\serial.obj)
+
+line level    source
+
+   1          /*********************************************************************************************************
+   2          *                                               uC/OS-II
+   3          *                                               实时内核
+   4          *
+   5          *                        (c) Copyright 1992-1998, Jean J. Labrosse, Plantation, FL
+   6          *                                               版权所有
+   7          *
+   8          *                                            MCU-51 专用代码
+   9          *                                           KEIL C51大模式编译
+  10          *
+  11          * 文件名 : SERIAL.C
+  12          * 作者   : Jean J. Labrosse
+  13          * 改编   : 杨屹 gdtyy@ri.gdt.com.cn 巨龙公司系统集成开发部 2002.09.27
+  14          ********************************************************************************************************/
+  15          //**********************************************************************************
+  16          //杨屹    2002/08/20    第一版
+  17          //基于中断的串口驱动
+  18          //**********************************************************************************
+  19          //程序特点：
+  20          //        1.基于中断，可并发执行
+  21          //        2.参数可配置（收发缓冲区大小，最大字符串长度）
+  22          //**********************************************************************************
+  23          //使用方法:
+  24          //        先配制收发缓冲区大小等可变参数（在serial.h中的宏定义）
+  25          //        1.开头加入#include <reg51.h>语句，一定要有。
+  26          //        2.初始化串口        InitSerial();//本例中为20MHz晶体，300波特率，模式2初始化
+  27          //        3.初始化串口缓冲区  InitSerialBuffer();
+  28          //**********************************************************************************
+  29          //波特率计算公式：
+  30          //        TH1=256-(2^SMOD/32*Fosc/12*1/Bound)
+  31          //    其中：SMOD=0，1；Fosc=晶体或晶振频率；Bound=波特率
+  32          //    本例中，SMOD=0；Fosc=20*10E6；Bound=300，所以TH1=0x52。
+  33          //        Baud rate(20Mhz)
+  34          //        300(52);1200(D5);2400(EA);4800(F5);9600(FB);19200(FD);38400(FF);
+  35          //**********************************************************************************
+  36          #ifndef  OS_MASTER_FILE
+  37          #include "source\includes.h"
+  38          #endif
+  39          #include "source\includes.h"
+  40          
+  41          #define COMM_NO_ERR 0
+  42          #define COMM_RX_EMPTY 1
+  43          #define COMM_TX_FULL 1
+  44          
+  45          //高速串口驱动
+  46          //制约传输速率的关键因素是串行口的中断服务子程序的执行时间；uCOS要求  串口速率 < 19200
+  47          //简化驱动模型，快速中断即进入中断后立即关中断，退出时开中断 且不通知uCos 提高串口中断优先级
+  48          INT8U TxBuf[TBUF_SIZE] = {0}, RxBuf[RBUF_SIZE] = {0};         //收发缓冲区
+  49          //INT8U *inTxBuf = NULL, *outTxBuf = NULL, *inRxBuf = NULL, *outRxBuf = NULL; //收发缓冲区读写指针
+  50          INT8U RxNum = 0;
+  51          int gPosi_S1 = -1;
+  52          bit TIflag = 1;       //发送信号，Note:It must be 1.
+  53          bit gRec_Flag1 = 0;   //接收信号
+  54          
+C51 COMPILER V9.54   SERIAL                                                                07/08/2019 15:19:37 PAGE 2   
+
+  55          
+  56          
+  57          void InitSerial() reentrant//串口初始化
+  58          {       //11.0592MHZ  9600
+  59   1              SCON = 0x50;
+  60   1              PCON &= 0x7f;           //波特率不倍速
+  61   1              AUXR |= 0x40;           //定时器1时钟为Fosc,即1T
+  62   1              AUXR &= 0xfe;           //串口1选择定时器1为波特率发生器
+  63   1              TMOD &= 0x0f;           //清除定时器1模式位
+  64   1              TMOD |= 0x20;           //设定定时器1为8位自动重装方式
+  65   1              TL1 = 0xDC;                 //1T
+  66   1              TH1 = 0xDC;                 //
+  67   1              TR1 = 1;
+  68   1              ES = 1;
+  69   1      }
+  70          
+  71          /*
+  72          void InitSerialBuffer(void) reentrant//串口缓冲区初始化
+  73          {
+  74                  ES = 0;
+  75                          inTxBuf = TxBuf;       //初始化发送接收输入输出指针
+  76                          outTxBuf = TxBuf;
+  77                  inRxBuf = RxBuf;
+  78                          outRxBuf = RxBuf;
+  79                  ES = 1;
+  80          }
+  81          */
+  82          void serial(void) reentrant       //串口应用功能部分
+  83          {       //中断系统部分处理在汇编中实现，去掉interrupt 4{//串口中断服务子程序
+  84   1              //INT8U *t;
+  85   1              /*
+  86   1          if (RI)     //接收中断处理
+  87   1              {       
+  88   1              RI = 0;                                 
+  89   1              t = inRxBuf;
+  90   1                      t++;
+  91   1              if (t == (RxBuf + RBUF_SIZE))  //下一个位置到末尾
+  92   1                              t = RxBuf;
+  93   1              if (t == outRxBuf) 
+  94   1                              return;                    //RxBuf Full   因为初始化的时候两个指针是相同的
+  95   1              *inRxBuf = SBUF;        //存放接收数据
+  96   1              inRxBuf = t;        //指向下一个位置
+  97   1          }
+  98   1              */
+  99   1              if (RI)
+ 100   1              {
+ 101   2                      RI = 0;
+ 102   2                      gRec_Flag1 = 1; 
+ 103   2                              
+ 104   2                      if (RxNum < RBUF_SIZE)
+ 105   2                              RxBuf[RxNum++] = SBUF;
+ 106   2                      else
+ 107   2                              SBUF = 0;
+ 108   2              }
+ 109   1              /*
+ 110   1              if (TI)                                 //发送中断处理
+ 111   1              {
+ 112   1              TI = 0;
+ 113   1                      if (inTxBuf == outTxBuf)          //输入输出指针相同，发送缓存空  初始化的时候两个指针是相同的
+ 114   1                      {
+ 115   1                              TIflag = 1;                               //发送信号 =  1，发送第一个数据之后继续发送 直到发送缓存为空 同时 TIflag = 1
+ 116   1                              return;
+C51 COMPILER V9.54   SERIAL                                                                07/08/2019 15:19:37 PAGE 3   
+
+ 117   1                      }
+ 118   1              SBUF = *(outTxBuf++);                       //发送数据  指向下一个发送位置      每发送完一个数据 TI由硬件置1
+ 119   1              if (outTxBuf == TxBuf + TBUF_SIZE)      //输出指针超过缓存长度，重新定位到缓存首地址
+ 120   1                              outTxBuf = TxBuf;       
+ 121   1           }
+ 122   1              */
+ 123   1      }
+ 124          
+ 125          void Send_Char_Uart1(unsigned char ch) reentrant
+ 126          {
+ 127   1        ES = 0;                      //关串口1中断，在产生发送完成中断标志时不会真正进入中断函数
+ 128   1        TI = 0;                      //清零串口发送完成中断标志
+ 129   1        SBUF = ch;                   //发送数据
+ 130   1        while(TI == 0);                  //等待发送完毕
+ 131   1        TI = 0;                                          //清零发送完成中断标志
+ 132   1        ES = 1;                                               
+ 133   1      }
+ 134          
+ 135          void Send_Str_Uart1(unsigned char str[],unsigned int n)  reentrant
+ 136          {
+ 137   1         unsigned int i;
+ 138   1         for(i = 0;i < n;i++) Send_Char_Uart1(str[i]);
+ 139   1      }
+ 140          
+ 141          /*
+ 142          bit CommGetChar(unsigned char *ch) reentrant//从串口缓冲区读1字节数据
+ 143          {
+ 144                  //ES=0;        
+ 145                  if(inRxBuf == outRxBuf) //接收缓存空
+ 146                          {
+ 147                                  ES = 1;
+ 148                                  return 0;
+ 149                          }
+ 150                  *ch = *outRxBuf;  
+ 151                          outRxBuf++;
+ 152                  if(outRxBuf == RxBuf + RBUF_SIZE) 
+ 153                                  outRxBuf = RxBuf;
+ 154                  //ES=1; 
+ 155                          return 0;       
+ 156          }
+ 157          */
+ 158          /*
+ 159          INT8U CommPutChar(unsigned char ch) reentrant//显示字符
+ 160          {
+ 161                  unsigned char *t;
+ 162                  ES = 0;        
+ 163                  if (TIflag)          //发送信号 = 1  第一次发送数据
+ 164                          {               
+ 165                          TIflag = 0;        
+ 166                      TI = 1;              //启动中断发送
+ 167                  }
+ 168                  t = inTxBuf;     //输入指针
+ 169                          t++;
+ 170                  if (t == TxBuf + TBUF_SIZE)     //输入指针超过缓存长度，重新定位到缓存首地址
+ 171                                  t = TxBuf;
+ 172                  if (t == outTxBuf)       //发送缓存满  不能发送
+ 173                          {
+ 174                                  ES = 1;
+ 175                                  return (COMM_TX_FULL);
+ 176                          }                 
+ 177                  *inTxBuf = ch;    //将数据放入发送缓存等待发送
+ 178                  inTxBuf = t;      //输入指针加1
+C51 COMPILER V9.54   SERIAL                                                                07/08/2019 15:19:37 PAGE 4   
+
+ 179                  ES = 1;
+ 180                          return (COMM_NO_ERR);
+ 181          }
+ 182          */
+ 183          /*
+ 184          void CommPutStr(unsigned char *str, unsigned int n) reentrant//显示字符串
+ 185          {
+ 186                  unsigned char i;
+ 187                  
+ 188                  for(i = 0;i < n;i++) CommPutChar(*(str + i));
+ 189          }
+ 190          */
+ 191          
+ 192          /*串口接收处理*/
+ 193          void Process_Uart(void) reentrant
+ 194          {
+ 195   1              INT8U CMD = 0xff;
+ 196   1              //Feed_WDT();
+ 197   1              if (gRec_Flag1)
+ 198   1              {
+ 199   2                  OSTimeDly(OS_TICKS_PER_SEC/10);      //100ms
+ 200   2                      Send_Str_Uart1(RxBuf, 20);
+ 201   2                      gPosi_S1 = strpos(RxBuf, 0x7e);
+ 202   2                      if (gPosi_S1 != -1)                //如果找到
+ 203   2                      {
+ 204   3                              CMD = RxBuf[gPosi_S1 + 2];   //获取命令
+ 205   3      
+ 206   3                              switch (CMD)
+ 207   3                              {                                                  
+ 208   4                                      case 0x0a:        //取消配置语音模式
+ 209   4      //                                      ZY1730_CONFIG = 0;
+ 210   4                                              break;
+ 211   4                                      case 0xdd:
+ 212   4                                              DE485 = 1;    //发送使能
+ 213   4                                      //      Send_Str_Uart1("485 Test!\r\n", 11);
+ 214   4                                              DE485 = 0;
+ 215   4                                              break;
+ 216   4                                      default:                  //嵌套部分用来处理不经常发生的消息
+ 217   4                                              switch (CMD)
+ 218   4                                              {
+ 219   5                                                      case 0x10:                        //录音
+ 220   5                                                      //      ZY1730_CONFIG = 1;
+ 221   5                                                              if((RxBuf[gPosi_S1 + 3] >= 0x10) && (RxBuf[gPosi_S1 + 4] <= 0xff))
+ 222   5                                                              {
+ 223   6                                                      //              Send_Str_Uart1("Start Rec!",10);
+ 224   6                                                      //              Start_Rec_Voice(S1_Rec_Buf[gPosi_S1 + 3], S1_Rec_Buf[gPosi_S1 + 4]);  //录音长短决定于区段的大小
+ 225   6                                                              }
+ 226   5                                                              break;
+ 227   5                                                      case 0x11:                        //7e 02 11 xx xx 0d 0a           测试
+ 228   5                                                      //      ZY1730_CONFIG = 1;
+ 229   5                                                              if((RxBuf[gPosi_S1 + 3] >= 0x10) && (RxBuf[gPosi_S1 + 4] <= 0xff))
+ 230   5                                                              {
+ 231   6                                                      //              Send_Str_Uart1("Playing Rec!",12);
+ 232   6                                                      //              Play_Voice(S1_Rec_Buf[gPosi_S1 + 3], S1_Rec_Buf[gPosi_S1 + 4]);//播音      0x10~0xff
+ 233   6                                                              }
+ 234   5                                                              break;
+ 235   5                                                      case 0x12:                        //擦除
+ 236   5                                                      //      ZY1730_CONFIG = 1;
+ 237   5                                                              if((RxBuf[gPosi_S1 + 3] >= 0x10) && (RxBuf[gPosi_S1 + 4] <= 0xff))
+ 238   5                                                              {
+ 239   6                                                      //              Send_Str_Uart1("Eerseing!",9);
+ 240   6                                                      //              Erase_Voice(S1_Rec_Buf[gPosi_S1 + 3], S1_Rec_Buf[gPosi_S1 + 4]);
+C51 COMPILER V9.54   SERIAL                                                                07/08/2019 15:19:37 PAGE 5   
+
+ 241   6                                                              }
+ 242   5                                                              break;                                          
+ 243   5                                              }
+ 244   4                              }
+ 245   3                      }
+ 246   2                      Clear_Buf(RxNum);
+ 247   2                      gRec_Flag1 = 0; 
+ 248   2                      RxNum = 0;
+ 249   2                      gPosi_S1 = -1;
+ 250   2              }
+ 251   1      }
+ 252          
+ 253          void Clear_Buf(unsigned char length) reentrant
+ 254          {
+ 255   1              unsigned char i;
+ 256   1              ES = 0;
+ 257   1              for (i = 0; i < length; i++)
+ 258   1                      RxBuf[i] = 0;
+ 259   1              ES = 1;
+ 260   1      }
+ 261          
+ 262          
+ 263          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    429    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     43    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,418 @@
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE LCD12864
+OBJECT MODULE PLACED IN .\OutPut\LCD12864.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE Source\other\LCD12864.c LARGE OPTIMIZE(8,SIZE) BROWSE DEBUG OBJECTEXTEND
+                    - PRINT(.\OutPut\LCD12864.lst) OBJECT(.\OutPut\LCD12864.obj)
+
+line level    source
+
+   1          #include <IAP15W4K61S4.h>
+   2          
+   3          #define LCD12864_DB P0
+   4          
+   5          typedef unsigned char uChar8;
+   6          
+   7          /**************************************定义全局变量*******************************************************
+             -****************/     
+   8          sbit LCD12864_RS = P3^5;
+   9          sbit LCD12864_RW = P3^6;
+  10          sbit LCD12864_E = P3^7;
+  11          
+  12          uChar8 i, j;                                                //循环变量
+  13          
+  14          /**************************************函数声明***********************************************************
+             -********************/
+  15          void LCD12864WaitReady(void);                               //检查12864是否繁忙
+  16          void LCD12864WriteCommand(uChar8 command);                      //写命令函数
+  17          void initLCD12864(void);                                        //初始化12864
+  18          void LCD12864WriteData(uChar8 dat);                             //写数据函数
+  19          void LCD12864SetCursor(uChar8 x, uChar8 y) ;                //从第y行第x列写数据
+  20          void LCD12864ShowString(uChar8 x, uChar8 y, uChar8* str) ;      //第y行第x列，开始打印str
+  21          void LCD12864EraseArea(uChar8 x, uChar8 y, uChar8 size);        //从第y行第x列开始，删除size字符
+  22          void LCD12864EraseAll(void);                                //擦除整个显示屏
+  23          void IO_init(void);
+  24          void img_disp(uChar8 code *img);                                //画128 * 64的像素图片
+  25          void img_clear(void);                                       //清屏
+  26          
+  27          void startUnderLine(uChar8 id);                             //管理开始界面下划线
+  28          void img_line_start1(void);                                 //画一条下划线      
+  29          void img_dele_line_start1(void);                            //删除这条下划线
+  30          void img_line_start2(void);
+  31          void img_dele_line_start2(void);        
+  32          void img_line_start3(void);
+  33          void img_dele_line_start3(void);        
+  34          
+  35          void underLine(uChar8 id);                                  //管理游戏界面下划线
+  36          void img_underLine(uChar8 k);                               //画线
+  37          void img_dele_underLine(void);                              //删除所有下划线
+  38          
+  39          /**************************************LCD12864功能函数***************************************************
+             -***********/        
+  40          //检查12864是否繁忙
+  41          void LCD12864WaitReady(void)
+  42          {
+  43   1          uChar8 state;
+  44   1      
+  45   1          LCD12864_DB = 0xFF; //P0
+  46   1          LCD12864_RS = 0;
+  47   1          LCD12864_RW = 1;
+  48   1          
+  49   1          do {
+  50   2              LCD12864_E = 1;
+  51   2              state = LCD12864_DB;
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 2   
+
+  52   2              LCD12864_E = 0;
+  53   2          } while(state & 0x80);
+  54   1      }
+  55          
+  56          //写命令函数
+  57          void LCD12864WriteCommand(uChar8 command)
+  58          {
+  59   1          LCD12864WaitReady();
+  60   1          LCD12864_RS = 0;
+  61   1          LCD12864_RW = 0;
+  62   1          LCD12864_DB = command;
+  63   1          LCD12864_E = 1;
+  64   1          LCD12864_E = 0;
+  65   1      }
+  66          
+  67          //初始化12864
+  68          void initLCD12864(void)
+  69          {
+  70   1          LCD12864WriteCommand(0x38);
+  71   1          LCD12864WriteCommand(0x0C);
+  72   1          LCD12864WriteCommand(0x06);
+  73   1          LCD12864WriteCommand(0x01);
+  74   1      }
+  75          
+  76          //写数据函数
+  77          void LCD12864WriteData(uChar8 dat)
+  78          {
+  79   1          LCD12864WaitReady();
+  80   1          LCD12864_RS = 1;
+  81   1          LCD12864_RW = 0;
+  82   1          LCD12864_DB = dat;
+  83   1          LCD12864_E = 1;
+  84   1          LCD12864_E = 0;
+  85   1      }
+  86          
+  87          //从第y行第x列写数据
+  88          void LCD12864SetCursor(uChar8 x, uChar8 y) 
+  89          {
+  90   1          uChar8 address;
+  91   1          if (0 == y) 
+  92   1              {
+  93   2              address = 0x80 + x;
+  94   2          } else if (1 == y) 
+  95   1              {
+  96   2              address = 0x90 + x;
+  97   2          } else if (2 == y) 
+  98   1              {
+  99   2              address = 0x88 + x;
+ 100   2              } else if (3 == y)
+ 101   1              {
+ 102   2                      address = 0x98 + x;
+ 103   2              }
+ 104   1          LCD12864WriteCommand(address);
+ 105   1      }
+ 106          
+ 107          //第y行第x列，开始打印str
+ 108          void LCD12864ShowString(uChar8 x, uChar8 y, uChar8* str) 
+ 109          {
+ 110   1          LCD12864SetCursor(x, y);
+ 111   1          while (*str != '\0') {
+ 112   2              LCD12864WriteData(*str++);
+ 113   2          }
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 3   
+
+ 114   1      }
+ 115          
+ 116          //从第y行第x列开始，删除size字符
+ 117          void LCD12864EraseArea(uChar8 x, uChar8 y, uChar8 size)
+ 118          {
+ 119   1          LCD12864SetCursor(x, y); //定位
+ 120   1          while(size--) {
+ 121   2               LCD12864WriteData(' '); //覆盖原数据
+ 122   2          }
+ 123   1      }
+ 124          
+ 125          //擦除整个显示屏
+ 126          void LCD12864EraseAll(void)
+ 127          {
+ 128   1          LCD12864WriteCommand(0x01);
+ 129   1      }
+ 130          
+ 131          //针对IAP15W4K61S4和STC15W4K56S4系列 IO口初始化
+ 132          void IO_init(void)
+ 133          {
+ 134   1              P0M0 = 0X00;
+ 135   1              P0M1 = 0X00;
+ 136   1      
+ 137   1              P1M0 = 0X00;
+ 138   1              P1M1 = 0X00;
+ 139   1      
+ 140   1              P2M0 = 0X00;
+ 141   1              P2M1 = 0X00;
+ 142   1      
+ 143   1              P3M0 = 0X00;
+ 144   1              P3M1 = 0X00;
+ 145   1      
+ 146   1              P4M0 = 0X00;
+ 147   1              P4M1 = 0X00;  
+ 148   1      }
+ 149          
+ 150          /************************************LCD12864画图操作*****************************************************
+             -*********/        
+ 151          //画128 * 64的像素图片
+ 152          void img_disp(uChar8 code *img) 
+ 153          {
+ 154   1              for(j = 0; j < 32; j++)     //上半屏
+ 155   1              {
+ 156   2                      for(i = 0; i < 8; i++)
+ 157   2                      {
+ 158   3                              LCD12864WriteCommand(0x34);      
+ 159   3                              LCD12864WriteCommand(0x80 + j);   
+ 160   3                              LCD12864WriteCommand(0x80 + i);    
+ 161   3                              LCD12864WriteCommand(0x30);      
+ 162   3                              LCD12864WriteData(img[j * 16 + i * 2]); 
+ 163   3                              LCD12864WriteData(img[j * 16 + i * 2 + 1]);  
+ 164   3                      }
+ 165   2              }
+ 166   1              for(j = 32; j < 64; j++)    //下半屏   
+ 167   1              {
+ 168   2                      for(i = 0; i<8; i++)
+ 169   2                      {
+ 170   3                              LCD12864WriteCommand(0x34);        
+ 171   3                              LCD12864WriteCommand(0x80 + j - 32);
+ 172   3                              LCD12864WriteCommand(0x88 + i);    
+ 173   3                              LCD12864WriteCommand(0x30);       
+ 174   3                              LCD12864WriteData(img[j * 16 + i * 2]);    
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 4   
+
+ 175   3                              LCD12864WriteData(img[j * 16 + i * 2 + 1]);    
+ 176   3                      } 
+ 177   2              }
+ 178   1              LCD12864WriteCommand(0x36); 
+ 179   1              LCD12864WriteCommand(0x30);     
+ 180   1      }
+ 181          
+ 182          //清屏
+ 183          void img_clear(void)
+ 184          {
+ 185   1              for(j = 0; j < 32; j++)
+ 186   1              {
+ 187   2                      for(i = 0; i < 8; i++)
+ 188   2                      {
+ 189   3                              LCD12864WriteCommand(0x34);      
+ 190   3                              LCD12864WriteCommand(0x80 + j);   
+ 191   3                              LCD12864WriteCommand(0x80 + i);    
+ 192   3                              LCD12864WriteCommand(0x30);      
+ 193   3                              LCD12864WriteData(0x00); 
+ 194   3                              LCD12864WriteData(0x00);  
+ 195   3                      }
+ 196   2              }
+ 197   1              for(j = 32; j < 64; j++)      
+ 198   1              {
+ 199   2                      for(i = 0; i < 8; i++)
+ 200   2                      {
+ 201   3                              LCD12864WriteCommand(0x34);        
+ 202   3                              LCD12864WriteCommand(0x80 + j - 32);
+ 203   3                              LCD12864WriteCommand(0x88 + i);    
+ 204   3                              LCD12864WriteCommand(0x30);       
+ 205   3                              LCD12864WriteData(0x00); 
+ 206   3                              LCD12864WriteData(0x00); 
+ 207   3                      } 
+ 208   2              }
+ 209   1              LCD12864WriteCommand(0x36);
+ 210   1              LCD12864WriteCommand(0x30);     
+ 211   1      }
+ 212          
+ 213          /***************************startInterface****************************************************************
+             -**/
+ 214          void startUnderLine(uChar8 id)     //管理游戏界面下划线
+ 215          {
+ 216   1              img_dele_line_start1();
+ 217   1              img_dele_line_start2();
+ 218   1              img_dele_line_start3();
+ 219   1              switch(id)
+ 220   1              {
+ 221   2                      case 0: 
+ 222   2                              img_line_start1();
+ 223   2                              break;
+ 224   2                      case 1: 
+ 225   2                              img_line_start2();
+ 226   2                              break;
+ 227   2                      case 2: 
+ 228   2                              img_line_start3();
+ 229   2                              break;
+ 230   2                      default: break;
+ 231   2              }
+ 232   1      }
+ 233          
+ 234          //画一条下划线
+ 235          void img_line_start1(void)
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 5   
+
+ 236          {
+ 237   1              j = 20;
+ 238   1              for(i = 5; i<7; i++)
+ 239   1              {
+ 240   2                      LCD12864WriteCommand(0x34);      
+ 241   2                      LCD12864WriteCommand(0x80 + j);   
+ 242   2                      LCD12864WriteCommand(0x80 + i);    
+ 243   2                      LCD12864WriteCommand(0x30);      
+ 244   2                      LCD12864WriteData(0xFF);  
+ 245   2                      LCD12864WriteData(0xFF);
+ 246   2              }
+ 247   1              LCD12864WriteCommand(0x36); 
+ 248   1              LCD12864WriteCommand(0x30);     
+ 249   1      }
+ 250          
+ 251          //删除这条下划线
+ 252          void img_dele_line_start1(void)
+ 253          {
+ 254   1              j = 20;
+ 255   1              for(i = 5; i < 7; i++)
+ 256   1              {
+ 257   2                      LCD12864WriteCommand(0x34);      
+ 258   2                      LCD12864WriteCommand(0x80 + j);   
+ 259   2                      LCD12864WriteCommand(0x80 + i);    
+ 260   2                      LCD12864WriteCommand(0x30);      
+ 261   2                      LCD12864WriteData(0x00);  
+ 262   2                      LCD12864WriteData(0x00);
+ 263   2              }
+ 264   1              LCD12864WriteCommand(0x36); 
+ 265   1              LCD12864WriteCommand(0x30);     
+ 266   1      }
+ 267          
+ 268          void img_line_start2(void)
+ 269          {
+ 270   1              j = 37;
+ 271   1              for(i = 5; i < 7; i++)
+ 272   1              {
+ 273   2                      LCD12864WriteCommand(0x34);        
+ 274   2                      LCD12864WriteCommand(0x80 + j - 32);
+ 275   2                      LCD12864WriteCommand(0x88 + i);    
+ 276   2                      LCD12864WriteCommand(0x30);       
+ 277   2                      LCD12864WriteData(0xFF); 
+ 278   2                      LCD12864WriteData(0xFF); 
+ 279   2              } 
+ 280   1              LCD12864WriteCommand(0x36); 
+ 281   1              LCD12864WriteCommand(0x30);     
+ 282   1      }
+ 283          
+ 284          void img_dele_line_start2(void)
+ 285          {
+ 286   1              j = 37;
+ 287   1              for(i = 5; i < 7; i++)
+ 288   1              {
+ 289   2                      LCD12864WriteCommand(0x34);        
+ 290   2                      LCD12864WriteCommand(0x80 + j - 32);
+ 291   2                      LCD12864WriteCommand(0x88 + i);    
+ 292   2                      LCD12864WriteCommand(0x30);       
+ 293   2                      LCD12864WriteData(0x00); 
+ 294   2                      LCD12864WriteData(0x00); 
+ 295   2              } 
+ 296   1              LCD12864WriteCommand(0x36); 
+ 297   1              LCD12864WriteCommand(0x30);     
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 6   
+
+ 298   1      }
+ 299          
+ 300          
+ 301          void img_line_start3(void)
+ 302          {
+ 303   1              j = 53;
+ 304   1              for(i = 5; i < 7; i++)
+ 305   1              {
+ 306   2                      LCD12864WriteCommand(0x34);        
+ 307   2                      LCD12864WriteCommand(0x80 + j - 32);
+ 308   2                      LCD12864WriteCommand(0x88 + i);    
+ 309   2                      LCD12864WriteCommand(0x30);       
+ 310   2                      LCD12864WriteData(0xFF); 
+ 311   2                      LCD12864WriteData(0xFF); 
+ 312   2              } 
+ 313   1              LCD12864WriteCommand(0x36); 
+ 314   1              LCD12864WriteCommand(0x30);     
+ 315   1      }
+ 316          
+ 317          void img_dele_line_start3(void)
+ 318          {
+ 319   1              j = 53;
+ 320   1              for(i = 5; i < 7; i++)
+ 321   1              {
+ 322   2                      LCD12864WriteCommand(0x34);        
+ 323   2                      LCD12864WriteCommand(0x80 + j - 32);
+ 324   2                      LCD12864WriteCommand(0x88 + i);    
+ 325   2                      LCD12864WriteCommand(0x30);       
+ 326   2                      LCD12864WriteData(0x00); 
+ 327   2                      LCD12864WriteData(0x00); 
+ 328   2              } 
+ 329   1              LCD12864WriteCommand(0x36); 
+ 330   1              LCD12864WriteCommand(0x30);     
+ 331   1      }
+ 332          
+ 333          
+ 334          /***************************gameInterface*****************************************************************
+             -*/
+ 335          void underLine(uChar8 id)     //管理游戏界面下划线
+ 336          {
+ 337   1              img_dele_underLine();
+ 338   1              switch(id)
+ 339   1              {
+ 340   2                      case 0: img_underLine(2); break;
+ 341   2                      case 1: img_underLine(3); break;
+ 342   2                      case 2: img_underLine(4); break;
+ 343   2                      case 3: img_underLine(5); break;
+ 344   2                      case 4: img_underLine(6); break;
+ 345   2                      default: break;
+ 346   2              }
+ 347   1      }
+ 348          
+ 349          void img_underLine(uChar8 k)
+ 350          {
+ 351   1              j = 29;
+ 352   1              LCD12864WriteCommand(0x34);      
+ 353   1              LCD12864WriteCommand(0x80 + j);   
+ 354   1              LCD12864WriteCommand(0x80 + k);    
+ 355   1              LCD12864WriteCommand(0x30);      
+ 356   1              LCD12864WriteData(0xFF);  
+ 357   1              LCD12864WriteData(0x80);
+ 358   1              LCD12864WriteCommand(0x36); 
+C51 COMPILER V9.54   LCD12864                                                              07/10/2019 23:30:10 PAGE 7   
+
+ 359   1              LCD12864WriteCommand(0x30);     
+ 360   1      }
+ 361          
+ 362          void img_dele_underLine(void)
+ 363          {
+ 364   1              j = 29;
+ 365   1              for(i = 0; i < 8; i++)
+ 366   1              {
+ 367   2                      LCD12864WriteCommand(0x34);      
+ 368   2                      LCD12864WriteCommand(0x80 + j);   
+ 369   2                      LCD12864WriteCommand(0x80 + i);    
+ 370   2                      LCD12864WriteCommand(0x30);      
+ 371   2                      LCD12864WriteData(0x00);  
+ 372   2                      LCD12864WriteData(0x00);
+ 373   2              }
+ 374   1              LCD12864WriteCommand(0x36); 
+ 375   1              LCD12864WriteCommand(0x30);     
+ 376   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1041    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      2       5
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

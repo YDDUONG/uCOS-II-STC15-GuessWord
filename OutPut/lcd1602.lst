@@ -1,0 +1,155 @@
+C51 COMPILER V9.01   LCD1602                                                               10/30/2013 20:03:40 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE LCD1602
+OBJECT MODULE PLACED IN .\OutPut\lcd1602.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE User\lcd1602.c LARGE OPTIMIZE(SIZE) BROWSE DEBUG OBJECTEXTEND PRINT(.\OutPu
+                    -t\lcd1602.lst) OBJECT(.\OutPut\lcd1602.obj)
+
+line level    source
+
+   1          #define uint unsigned int
+   2          #define ulint unsigned long int
+   3          #define uchar unsigned char
+   4          
+   5          #ifndef  OS_MASTER_FILE
+   6          #include "source\includes.h"
+   7          #endif
+   8          #include "source\includes.h"
+   9          
+  10          //*************LCD1602驱动程序***************************//
+  11          void lcd1602_delay(uchar delaytime)
+  12          {
+  13   1        while(delaytime)delaytime--;
+  14   1      }
+  15          void write_lcd1602_command(uchar write_command) //写LCD命令
+  16          {
+  17   1              lcd1602_delay(10);
+  18   1              LCD1602_RS=0;
+  19   1              LCD1602_RW=0;
+  20   1              LCD1602_EN=1;
+  21   1              LCD1602_PORT=write_command;
+  22   1              lcd1602_delay(50);
+  23   1              LCD1602_EN=0;
+  24   1              lcd1602_delay(50);
+  25   1              LCD1602_RW=1;
+  26   1      
+  27   1      }
+  28          void write_lcd1602_data(uchar write_data)//写LCD数据
+  29          {
+  30   1              lcd1602_delay(10);
+  31   1      
+  32   1              LCD1602_RW=0;
+  33   1              LCD1602_RS=1;
+  34   1              LCD1602_EN=1;
+  35   1              LCD1602_PORT=write_data;
+  36   1         lcd1602_delay(50);
+  37   1              LCD1602_EN=0;
+  38   1      
+  39   1         lcd1602_delay(50);
+  40   1              LCD1602_RW=1;
+  41   1      }
+  42          
+  43          void read1602_cursor_addr()
+  44          {  
+  45   1              LCD1602_PORT=0xff;
+  46   1              lcd1602_delay(50);
+  47   1              LCD1602_RS=0;
+  48   1              LCD1602_RW=1;
+  49   1          LCD1602_EN=1;
+  50   1          lcd1602_delay(50);
+  51   1              LCD1602_EN=0;
+  52   1              lcd1602_delay(50);
+  53   1          lcd1602_cousor_addr=LCD1602_PORT;
+  54   1          lcd1602_cousor_addr= lcd1602_cousor_addr&0x7f;
+C51 COMPILER V9.01   LCD1602                                                               10/30/2013 20:03:40 PAGE 2   
+
+  55   1      
+  56   1      }
+  57          
+  58          
+  59          void LCD1602_write_dat( uchar x,uchar y,uchar dat) //x表示行，y表示该行的位置（也就是列）
+  60          {
+  61   1       switch(x)
+  62   1        {
+  63   2        case 0: write_lcd1602_command(0x80+y);  break;  //第一行写起
+  64   2        case 1: write_lcd1602_command(0xc0+y);  break; //（0xc0=0x80+0x40）第二行写起
+  65   2        }
+  66   1        write_lcd1602_data(dat|0x30);   //dat或上0x30，就时把数字0123456789转换成ASIIC
+  67   1      }                                                         
+  68          
+  69          void LCD1602_write_char( uchar x,uchar y,uchar dat) //x表示行，y表示该行的位置（也就是列）
+  70          {
+  71   1       switch(x)
+  72   1        {
+  73   2        case 0: write_lcd1602_command(0x80+y);  break;  //第一行写起
+  74   2        case 1: write_lcd1602_command(0xc0+y);  break; //（0xc0=0x80+0x40）第二行写起
+  75   2        }
+  76   1        write_lcd1602_data(dat);   
+  77   1      }
+  78          void LCD1602_write_string(uchar x,uchar y,uchar code *str)   //写显示命令
+  79          {                                                        //x表示行，y表示该行的位置（也就是列）
+  80   1       switch(x)
+  81   1        {
+  82   2        case 0: write_lcd1602_command(0x80+y); break;
+  83   2        case 1: write_lcd1602_command(0xc0+y); break;
+  84   2        }
+  85   1       while (*str)
+  86   1        {
+  87   2          write_lcd1602_data(*str);
+  88   2              str++;
+  89   2        }
+  90   1      }
+  91          void initial_lcd1602(void) //初始化LCD1602
+  92          {
+  93   1       uint i;
+  94   1      // EN=0;
+  95   1       for(i=200;i>0;i--)
+  96   1         lcd1602_delay(248);
+  97   1       write_lcd1602_command(0x38);//设置lcd1602为每个字符5×7显示
+  98   1       for(i=4;i>0;i--)
+  99   1         lcd1602_delay(248);
+ 100   1       write_lcd1602_command(0x38);
+ 101   1        for(i=4;i>0;i--)
+ 102   1         lcd1602_delay(248);
+ 103   1       write_lcd1602_command(0x0f); //开显示，光标显示并闪烁
+ 104   1       for(i=4;i>0;i--)
+ 105   1         lcd1602_delay(248);
+ 106   1       write_lcd1602_command(0x06);//光标移动设置，每写一个数，光标自动加一
+ 107   1        for(i=4;i>0;i--)
+ 108   1         lcd1602_delay(248);
+ 109   1      write_lcd1602_command(0x01); //清屏
+ 110   1       for(i=4;i>0;i--)
+ 111   1         lcd1602_delay(248);
+ 112   1      
+ 113   1      
+ 114   1      }
+ 115          
+ 116          //********************lcd1602驱动程序到此完********************//
+C51 COMPILER V9.01   LCD1602                                                               10/30/2013 20:03:40 PAGE 3   
+
+ 117          
+ 118          
+ 119          
+ 120          
+ 121          
+ 122          
+ 123          
+ 124          
+ 125          
+ 126          
+ 127          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    303    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      1    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
